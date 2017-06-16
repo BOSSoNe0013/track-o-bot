@@ -67,15 +67,11 @@ void WineBottle::SetPath( const QString& path )
                        dirContent.begin(), dirContent.end(),
                        std::inserter( difference, difference.begin() ) );
 
-  if ( ( mIsValid = difference.size() ? false : true ) ) {
-    SetupDosDevices();
-    SetupRegFiles();
-  }
-  else {
+  if ( !( mIsValid = difference.size() ? false : true ) ) {
     ERR( "Directory: %s is not a valid wine prefix!", qt2cstr( path ) );
   }
-
-
+  SetupDosDevices();
+  SetupRegFiles();
 }
 
 const QString& WineBottle::Path() const {
