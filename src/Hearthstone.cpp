@@ -11,6 +11,7 @@
 
 #include <QDirIterator>
 #include <QDateTime>
+#include <QRegularExpression>
 
 #ifdef Q_OS_MAC
 #include "OSXWindowCapture.h"
@@ -27,7 +28,10 @@
 
 #include "Settings.h"
 
-DEFINE_SINGLETON_SCOPE( Hearthstone );
+#define SLOW_UPDATE_INTERVAL 5000
+#define FAST_UPDATE_INTERVAL 250
+
+DEFINE_SINGLETON_SCOPE( Hearthstone )
 
 Hearthstone::Hearthstone()
  : mCapture( NULL ), mGameRunning( false ), mGameHasFocus( false ), mBuild( 0 )
@@ -48,15 +52,16 @@ Hearthstone::Hearthstone()
   // So just check only once in a while
   mTimer = new QTimer( this );
   connect( mTimer, &QTimer::timeout, this, &Hearthstone::Update );
+  mTimer->start( SLOW_UPDATE_INTERVAL );
 #ifdef Q_OS_LINUX
   connect( this, &Hearthstone::GameStarted, this, &Hearthstone::DetectBuild );
   connect( this, &Hearthstone::GameStarted, this, &Hearthstone::SetFastUpdates );
   connect( this, &Hearthstone::GameStopped, this, &Hearthstone::SetSlowUpdates );
-  mTimer->start( 5000 );
 #elif defined Q_OS_MAC
-  mTimer->start( 5000 );
+    //nothing
 #else
-  mTimer->start( 250 );
+  connect( this, &Hearthstone::GameStarted, this, &Hearthstone::SetFastUpdates );
+  connect( this, &Hearthstone::GameStopped, this, &Hearthstone::SetSlowUpdates );
 #endif
 }
 
@@ -100,6 +105,16 @@ void Hearthstone::Update() {
       emit GameStopped();
     }
   }
+}
+
+void Hearthstone::SetSlowUpdates() {
+  DBG( "Hearthstone::SetSlowUpdates" );
+  mTimer->setInterval( SLOW_UPDATE_INTERVAL );
+}
+
+void Hearthstone::SetFastUpdates() {
+  DBG( "Hearthstone::SetFastUpdates" );
+  mTimer->setInterval( FAST_UPDATE_INTERVAL );
 }
 
 QString Hearthstone::ReadAgentAttribute( const char *attributeName ) const {
@@ -426,8 +441,19 @@ void Hearthstone::DetectBuild() {
   if( !hsPath.isEmpty() ) {
 #ifdef Q_OS_MAC
     buildPath = QString( "%1/Hearthstone.app/Contents/Info.plist" ).arg( hsPath );
-    QSettings settings( buildPath, QSettings::NativeFormat );
-    QString version = settings.value( "BlizzardFileVersion", "1.0.0.0" ).toString();
+
+    QString version;
+    QFile file( buildPath );
+    if( file.open( QIODevice::ReadOnly | QFile::Text ) ) {
+      QTextStream is( &file );
+      QString content = is.readAll();
+
+      QRegularExpression r( "<key>BlizzardFileVersion<\\/key>\\s*<string>([\\d\\.]+)<\\/string>", QRegularExpression::CaseInsensitiveOption );
+      QRegularExpressionMatch match = r.match( content );
+      if( match.hasMatch() ) {
+        version = match.captured( 1 );
+      }
+    }
 
     if( !version.isEmpty() ) {
       mBuild = version.split(".").last().toInt();

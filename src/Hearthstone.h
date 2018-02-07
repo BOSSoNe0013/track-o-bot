@@ -67,8 +67,6 @@ signals:
 
 private slots:
   void Update();
-#ifdef Q_OS_LINUX
-  void SetSlowUpdates() { mTimer->setInterval( 5000 ); }
-  void SetFastUpdates() { mTimer->setInterval( 250 ); }
-#endif
+  void SetSlowUpdates();
+  void SetFastUpdates();
 };

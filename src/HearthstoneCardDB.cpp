@@ -32,6 +32,14 @@ QString HearthstoneCardDB::Type( const QString& id ) const {
   return mCards[ id ][ "type" ].toString();
 }
 
+QString LocaleForCardDB() {
+  QString locale = Hearthstone::Instance()->DetectLocale();
+  if( locale == "enGB" ) {
+    locale = "enUS";
+  }
+  return locale;
+}
+
 QString HearthstoneCardDB::CardsJsonLocalPath() {
   int build = Hearthstone::Instance()->Build();
   QString locale = Hearthstone::Instance()->DetectLocale();
@@ -80,6 +88,11 @@ void HearthstoneCardDB::CardsJsonReply() {
   QNetworkReply *reply = static_cast< QNetworkReply* >( sender() );
   QByteArray jsonData = reply->readAll();
 
+  if( reply->error() == QNetworkReply::ContentNotFoundError ) {
+    LOG( "Couldn't download card DB: %s. Maybe current HS version is too new.", qt2cstr( reply->url().toString() ) );
+    return;
+  }
+
   DBG( "Downloaded cards.json %d bytes", jsonData.size() );
 
   QString dirPath = QFileInfo( CardsJsonLocalPath() ).absolutePath();
@@ -125,7 +138,6 @@ void HearthstoneCardDB::LoadJson() {
     card[ "cost" ] = jsonCard[ "cost" ].toInt();
     card[ "type" ] = jsonCard[ "type" ].toString();
     mCards[ ref ] = card;
-    /* DBG( "%s Name %s Cost %d Type %s", qt2cstr( ref ), qt2cstr( Name( ref ) ), Cost( ref ), qt2cstr( Type( ref ) ) ); */
   }
 
   DBG( "Card DB %d cards", mCards.count() );
