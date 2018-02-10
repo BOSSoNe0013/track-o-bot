@@ -110,8 +110,8 @@ xcb_window_t LinuxWindowCapture::FindWindow( const QString& instanceName, const 
     xcb_get_property_cookie_t wmClassC = xcb_icccm_get_wm_class( xcbConn, win );
 
     if ( xcb_icccm_get_wm_class_reply( xcbConn, wmClassC, &wmNameR, nullptr ) ) {
-      if( !qstrcmp( wmNameR.class_name, qt2cstr( windowClass ) ) ||
-          !qstrcmp( wmNameR.instance_name, qt2cstr ( instanceName ) ) ) {
+      if( !qstricmp( wmNameR.class_name, qt2cstr( windowClass ) ) ||
+          !qstricmp( wmNameR.instance_name, qt2cstr ( instanceName ) ) ) {
         winID = win;
         break;
       }
